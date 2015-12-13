@@ -1,0 +1,301 @@
+"""Created on Fri Dec 11 - 13 2015 
+@author: Francesco Corea"""
+"""Main steps to follow:
+1 - Create a board;
+2 - Set piece moving rules;
+3 - Playing. 
+"""
+
+import os,sys 
+ 
+"""
+1 - Creation of the board
+
+The board is nothing else than a matrix 8X8, that has to be created plain and afterwards populated by different pieces.
+
+The legend for the pieces is as follows:
+Pawn - p
+Rook - r
+Knight - n
+Bisho - b
+King - k
+Queen - q
+ 
+and identified for their color thorugh a previous "w" = white, or "b" = black.
+"""
+whitepieces=['wr','wn','wb','wq','wk','wb','wn','wr']
+blackpieces=['br','bn','bb','bq','bk','bb','bn','br']
+
+def newgame():
+    board={};
+    
+    for y in range(8):
+        for x in range(8):
+            board[(0,x)]=whitepieces[x]
+   
+    for y in range(8):
+        for x in range(8):
+            board[(7,x)]=blackpieces[x]
+        
+    for y in range(8):
+        for x in range(8):
+            board[(1,x)]='wp'
+            board[(6,x)]='bp'
+            
+    return board
+    
+"""
+2 - Setting pieces allowed moves
+"""
+
+def move(box):
+    """box indicates as initial and final moves, e.g.pawn from e2 to e3 -->e2e3"""
+    start=(int(box[1])-1,int(ord(box[0]))-ord('a'));
+    """the ord function assigns to a string a number, useful here for computing the distance on the plane""" 
+    end=(int(box[3])-1,int(ord(box[2]))-ord('a'));
+    return start, end
+
+"""Pieces moves' rules"""
+
+"""Pawn"""
+def pawn(board,start,end):
+    
+    # It can move only forward and one step at once
+    
+    if ((end[0]-start[0])==1 and (end[1]==start[1])):
+        return True
+    
+    # But it attacks diagonally
+    else:
+        if (abs(end[0]-start[0])==1 and abs(end[1]-start[1])==1):
+            return True
+
+"""Rook"""
+def rook(board,start,end):
+    if start[0]==end[0] or start[1]==end[1]: 
+        #Vertical move or Horizontal move
+        return True
+
+"""Knight"""
+# Two combinations: it moves two steps in a direction and then one right/left, or the other way round:
+def knight(board,start,end):
+    if (abs(end[0]-start[0])==2 and abs(end[1]-start[1])==1) or (abs(end[0]-start[0])==1 and abs(end[1]-start[1])==2):
+        return True
+        #the abs allows the knight to move in any direction
+
+"""Bishop"""
+def bishop(board,start,end):
+    if abs(end[0]-start[0])==abs(end[1]-start[1]):
+        return True
+  
+"""Queen"""
+def queen(board,start,end):
+    if (abs(end[0]-start[0])==abs(end[1]-start[1])) or (start[0]==end[0] or start[1]==end[1]):
+        return True
+    
+"""King"""
+def king(board,start,end):
+    if abs(end[0]-start[0])<=1 and abs(end[1]-start[1])<=1:
+        return True
+
+"""Overall checks"""
+
+def checkpiecesmoves(board,start,end,piece,player):
+    
+    if piece not in 'wn' or 'bn':
+        if not path(board,start,end):
+            return False 
+            """The knight is an exception, because it can actually jump"""
+    
+    if (piece==('wr'or 'br') and rook(board,start,end)):
+        return True
+    elif (piece==('wn'or 'bn') and knight(board,start,end)):
+        return True   
+    elif (piece==('wb'or 'bb') and bishop(board,start,end)):
+        return True    
+    elif (piece==('wq'or 'bq') and queen(board,start,end)):
+        return True
+    elif (piece==('wk'or 'bk') and king(board,start,end)):
+        return True
+    elif (piece==('wp'or 'bp') and pawn(board,start,end)):
+        return True
+
+        return False
+        
+"""Then, indipendently of the piece we want to move, we have to check that the cells are not already taken 
+or that there is not any obstacle in the piece's path - this could be test for all the eight cells around a piece, and then reiterate.
+Instead of a for cycle, we will call back the function once finished in order to restart the process."""
+
+def path(board,start,end):
+    if abs(end[0]-start[0])<=1 and abs(end[1]-start[1])<=1:
+        return True
+    else:
+        
+        """all the possible (8) moves/directions"""
+        
+        if end[0]>start[0] and end[1]>start[1]:
+            newstart=(start[0]+1,start[1]+1)
+        elif end[0]>start[0] and end[1]<start[1]:
+            newstart=(start[0]+1,start[1]-1) 
+        elif end[0]<start[0] and end[1]>start[1]:
+            newstart=(start[0]-1,start[1]+1) 
+        elif end[0]<start[0] and end[1]<start[1]:
+            newstart=(start[0]-1,start[1]-1) 
+        elif end[0]>start[0] and end[1]==start[1]:
+            newstart=(start[0]+1,start[1]) 
+        elif end[0]==start[0] and end[1]>start[1]:
+            newstart=(start[0],start[1]+1) 
+        elif end[0]<start[0] and end[1]==start[1]:
+            newstart=(start[0]-1,start[1]) 
+        elif end[0]==start[0] and end[1]<start[1]:
+            newstart=(start[0],start[1]-1)
+        
+        if board.get(newstart):
+            return False
+        else:
+            path(board,newstart,end)
+       
+"""Check then the pieces still present for each players"""
+
+def listofpieces(board,player,opponent):    
+ 
+    firstlist=[];
+    for x in range(8):
+        for y in range(8):
+            if (x,y) in board:
+                piece=board[(x,y)]
+                if piece.startswith('w') and player.startswith('w'):
+                    return False
+                elif piece.startswith('b') and player.startswith('b'):
+                    return False
+                else:
+                    firstlist.append((x,y));
+                    
+    secondlist=[];
+    for x in range(8):
+        for y in range(8):
+            if (x,y) in board:
+                piece=board[(x,y)]
+                if piece.startswith('w') and player.startswith('b'):
+                    return False
+                elif piece.startswith('b') and player.startswith('w'):
+                    return False
+                else:
+                    secondlist.append((x,y));
+    
+    if opponent=="Y":
+        return firstlist
+    else:
+        return secondlist
+        
+"""and verify the possible moves for such pieces"""
+
+def moveallowed(board,player,square):
+    validmoves=[];
+    for x in range(8):
+        for y in range(8):
+            if (x,y) not in listofpieces(board,player,'N'):
+                firstpiece=board[square]
+            if checkpiecesmoves(board,square,(x,y),firstpiece,player):
+                if not nextmovecheck(square,(x,y),board,player):
+                    validmoves.append((x,y)) 
+    
+    return validmoves
+    
+"""Check: actual checkmate or next-move checkmate?
+a - control if king is in check
+b - control if can move out of it, otherwise checkmate
+c - control if next-move can bring player in check
+"""
+
+"""This first function assesses if the king is actually in check"""
+
+def check(board,player):
+    if player.startswith("w"):
+        k='wk'
+    else:
+        k='bk'
+    for x in range(8):
+        for y in range(8):
+            if (x,y) in board:
+                if board[(x,y)]==k:
+                    king=(x,y)
+    
+    """control for opponent's pieces, where:
+    -the initial coordinates are where the opponent piece is located;
+    -the end coordinates is where the king is located (x,y);
+    -the pieces to be checked are all the ones left to the opponent"""
+    
+    """"
+    for piece in listofpieces(board,player,'Y'):
+        if checkpiecesmoves(board,piece,king,board.get(piece),player):
+            return True
+    """
+"""Second function checks for possible moves - if none exists, it is checkmate"""
+
+def checkmate(board,player):
+    ownpieces=listofpieces(board,player,'N')
+    moves=[];
+    for piece in ownpieces:
+        moves.extend(moveallowed(board,player,piece))
+    if len(moves)==0:
+        return True
+    else:
+        return False
+      
+"""The final function verifies instead whether the next-move allows the player to be in check"""
+
+def nextmovecheck(start,end,board,player):
+    del board[start]
+    board[end]=board.get(start)
+    test=check(board,player)
+    board[start]=board.get(start)
+    if board.get(end):
+        board[end]=board.get(end)
+    else:
+        del board[end]
+    return test
+
+""""
+3 - Playing
+"""
+def playeraction(newboard,playerwhite,playerblack):
+    
+    #The first one to start is always the white
+    player=playerwhite;
+    
+    while True:    
+        action=raw_input('Move:');
+        if check(newboard,player)==True:
+            break
+        
+    start,end=move(action)
+    
+    if not nextmovecheck(start,end,newboard,player):
+        begin=newboard.get(start)
+        del newboard[start]
+        newboard[end]=begin
+    
+    if player == playerwhite:
+        player=playerblack
+    else:
+        player=playerwhite
+    
+    if checkmate(newboard,player):
+        print player+"lost!"
+           
+def initialise():
+    os.system('clear')
+    print "We are playing chess. Welcome!"
+    playerwhite= 'white player'
+    playerblack= 'black player'
+    newboard=newgame();
+    playeraction(newboard,playerwhite,playerblack);
+    
+def main():
+    try:
+        while True:
+            initialise()
+    except KeyboardInterrupt:
+        sys.exit("Exit")
+main()
